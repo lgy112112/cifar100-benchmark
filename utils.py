@@ -215,16 +215,7 @@ def train_model(model, train_loader, val_loader, test_loader, optimizer, criteri
     best_top1 = 0.0
     best_state_dict = None
     
-    history = {
-        'train_loss': [],
-        'train_top1': [],
-        'train_top5': [],
-        'val_loss': [],
-        'val_top1': [],
-        'val_top5': [],
-        'test_loss': [],
-        'test_top1': [],
-        'test_top5': [],
+    batch_history = {
         'batch_train': [],
         'batch_val': [],
         'batch_test': [],
@@ -245,16 +236,8 @@ def train_model(model, train_loader, val_loader, test_loader, optimizer, criteri
     batch_index = 0
     for epoch in range(num_epochs):
         print(f"Epoch {epoch+1}/{num_epochs}")
-        train_loss, train_top1, train_top5, batch_index = train_one_epoch(model, train_loader, optimizer, criterion, device, save_log, save_dir, epoch+1, batch_index, history)
-        val_loss, val_top1, val_top5, batch_index = validate_one_epoch(model, val_loader, criterion, device, save_log, save_dir, epoch+1, batch_index, history)
-        
-        history['train_loss'].append(train_loss)
-        history['train_top1'].append(train_top1)
-        history['train_top5'].append(train_top5)
-        history['val_loss'].append(val_loss)
-        history['val_top1'].append(val_top1)
-        history['val_top5'].append(val_top5)
-
+        train_loss, train_top1, train_top5, batch_index = train_one_epoch(model, train_loader, optimizer, criterion, device, save_log, save_dir, epoch+1, batch_index, batch_history)
+        val_loss, val_top1, val_top5, batch_index = validate_one_epoch(model, val_loader, criterion, device, save_log, save_dir, epoch+1, batch_index, batch_history)
         
         print(f"Train Loss: {train_loss:.4f}, Top 1: {train_top1:.4f}, Top 5: {train_top5:.4f}")
         print(f"Val Loss: {val_loss:.4f}, Top 1: {val_top1:.4f}, Top 5: {val_top5:.4f}")
@@ -277,14 +260,17 @@ def train_model(model, train_loader, val_loader, test_loader, optimizer, criteri
     else:
         print("没有找到最佳模型，使用最后一次训练的模型")
 
-    test_loss, test_top1, test_top5, batch_index = test_one_epoch(model, test_loader, criterion, device, save_log, save_dir, epoch+1, batch_index, history)
-    history['test_loss'].append(test_loss)
-    history['test_top1'].append(test_top1)
-    history['test_top5'].append(test_top5)
+    test_loss, test_top1, test_top5, batch_index = test_one_epoch(model, test_loader, criterion, device, save_log, save_dir, epoch+1, batch_index, batch_history)
     print(f"Test Loss: {test_loss:.4f}, Top 1: {test_top1:.4f}, Top 5: {test_top5:.4f}")
     
     if save_log:
-        df = pd.DataFrame(history)
-        df.to_csv(os.path.join(save_dir, "training_log.csv"), index=False)
+        df_batch = pd.DataFrame(batch_history['batch_train'])
+        df_batch.to_csv(os.path.join(save_dir, "training_log.csv"), index=False)
+        
+        df_batch = pd.DataFrame(batch_history['batch_val'])
+        df_batch.to_csv(os.path.join(save_dir, "validation_log.csv"), index=False)
+        
+        df_batch = pd.DataFrame(batch_history['batch_test'])
+        df_batch.to_csv(os.path.join(save_dir, "test_log.csv"), index=False)
     
-    return history
+    return batch_history
