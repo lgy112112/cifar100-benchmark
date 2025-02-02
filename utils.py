@@ -256,3 +256,25 @@ def train_model(model, train_loader, val_loader, test_loader, optimizer, criteri
         log_file.close()
     
     return None
+
+
+def predict(model, test_loader, device, pretrained=None):
+    if pretrained is not None:
+        model.load_state_dict(torch.load(pretrained))
+    model.eval()
+    model.to(device)
+    with torch.no_grad():
+        top1_correct = 0
+        top5_correct = 0
+        total = 0
+        for images, labels in test_loader:
+            images, labels = images.to(device), labels.to(device)
+            outputs = model(images)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            top1_correct += (predicted == labels).sum().item()
+            top5_correct += torch.topk(outputs, 5, dim=1).indices.eq(labels.view(-1, 1)).sum().item()
+        top1_accuracy = top1_correct / total
+        top5_accuracy = top5_correct / total
+        print(f"Top 1 Accuracy: {top1_accuracy:.4f}, Top 5 Accuracy: {top5_accuracy:.4f}")
+    return top1_accuracy, top5_accuracy
