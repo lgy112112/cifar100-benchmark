@@ -58,13 +58,12 @@ def check_model(model, num_classes=100, batch_size=4, device='cpu'):
     #     x = layer(x)
     #     print(f"{name}: {x.shape}")
 
-def train_one_epoch(model, train_loader, optimizer, criterion, device, save_log=False, save_dir=None, epoch=None, batch_index=0, history=None):
+def train_one_epoch(model, train_loader, optimizer, criterion, device, save_log=False, save_dir=None, epoch=None, batch_index=0, log_file=None):
     model.train()
     running_loss = 0.0
     top1_correct = 0
     top5_correct = 0
     total = 0
-    batch_history = []
     
     prog_bar = tqdm(train_loader, desc="Training", leave=False)
     for images, labels in prog_bar:
@@ -91,28 +90,25 @@ def train_one_epoch(model, train_loader, optimizer, criterion, device, save_log=
         })
         
         if save_log:
-            batch_history.append({
-                'epoch': epoch,
-                'batch': batch_index,
-                'loss': batch_loss,
-                'top1': batch_top1,
-                'top5': batch_top5
-            })
+            log_file.write(f"Batch Train, Epoch: {epoch}, Batch: {batch_index}, Loss: {batch_loss:.4f}, Top1: {batch_top1:.4f}, Top5: {batch_top5:.4f}\n")
         batch_index += 1
     
-    if save_log:
-        history['batch_train'].extend(batch_history)
+    epoch_loss = running_loss / len(train_loader)
+    epoch_top1 = top1_correct / total
+    epoch_top5 = top5_correct / total
     
-    return running_loss / len(train_loader), top1_correct / total, top5_correct / total, batch_index
+    if save_log:
+        log_file.write(f"Epoch Train, Epoch: {epoch}, Loss: {epoch_loss:.4f}, Top1: {epoch_top1:.4f}, Top5: {epoch_top5:.4f}\n")
+    
+    return epoch_loss, epoch_top1, epoch_top5, batch_index
 
 
-def validate_one_epoch(model, val_loader, criterion, device, save_log=False, save_dir=None, epoch=None, batch_index=0, history=None):
+def validate_one_epoch(model, val_loader, criterion, device, save_log=False, save_dir=None, epoch=None, batch_index=0, log_file=None):
     model.eval()  # 设置模型为评估模式
     running_loss = 0.0
     top1_correct = 0
     top5_correct = 0
     total = 0
-    batch_history = []
     
     prog_bar = tqdm(val_loader, desc="Validation", leave=False)
     with torch.no_grad():  # 关闭梯度计算
@@ -137,27 +133,24 @@ def validate_one_epoch(model, val_loader, criterion, device, save_log=False, sav
             })
             
             if save_log:
-                batch_history.append({
-                    'epoch': epoch,
-                    'batch': batch_index,
-                    'loss': batch_loss,
-                    'top1': batch_top1,
-                    'top5': batch_top5
-                })
+                log_file.write(f"Batch Val, Epoch: {epoch}, Batch: {batch_index}, Loss: {batch_loss:.4f}, Top1: {batch_top1:.4f}, Top5: {batch_top5:.4f}\n")
             batch_index += 1
     
-    if save_log:
-        history['batch_val'].extend(batch_history)
+    epoch_loss = running_loss / len(val_loader)
+    epoch_top1 = top1_correct / total
+    epoch_top5 = top5_correct / total
     
-    return running_loss / len(val_loader), top1_correct / total, top5_correct / total, batch_index
+    if save_log:
+        log_file.write(f"Epoch Val, Epoch: {epoch}, Loss: {epoch_loss:.4f}, Top1: {epoch_top1:.4f}, Top5: {epoch_top5:.4f}\n")
+    
+    return epoch_loss, epoch_top1, epoch_top5, batch_index
 
-def test_one_epoch(model, test_loader, criterion, device, save_log=False, save_dir=None, epoch=None, batch_index=0, history=None):
+def test_one_epoch(model, test_loader, criterion, device, save_log=False, save_dir=None, epoch=None, batch_index=0, log_file=None):
     model.eval()  # 设置模型为评估模式
     running_loss = 0.0
     top1_correct = 0
     top5_correct = 0
     total = 0
-    batch_history = []
     
     prog_bar = tqdm(test_loader, desc="Testing")
     with torch.no_grad():  # 关闭梯度计算
@@ -182,19 +175,17 @@ def test_one_epoch(model, test_loader, criterion, device, save_log=False, save_d
             })
             
             if save_log:
-                batch_history.append({
-                    'epoch': epoch,
-                    'batch': batch_index,
-                    'loss': batch_loss,
-                    'top1': batch_top1,
-                    'top5': batch_top5
-                })
+                log_file.write(f"Batch Test, Epoch: {epoch}, Batch: {batch_index}, Loss: {batch_loss:.4f}, Top1: {batch_top1:.4f}, Top5: {batch_top5:.4f}\n")
             batch_index += 1
     
-    if save_log:
-        history['batch_test'].extend(batch_history)
+    epoch_loss = running_loss / len(test_loader)
+    epoch_top1 = top1_correct / total
+    epoch_top5 = top5_correct / total
     
-    return running_loss / len(test_loader), top1_correct / total, top5_correct / total, batch_index
+    if save_log:
+        log_file.write(f"Epoch Test, Epoch: {epoch}, Loss: {epoch_loss:.4f}, Top1: {epoch_top1:.4f}, Top5: {epoch_top5:.4f}\n")
+    
+    return epoch_loss, epoch_top1, epoch_top5, batch_index
 
 
 def train_model(model, train_loader, val_loader, test_loader, optimizer, criterion, device, num_epochs, save_log=False, save_dir='log'):
@@ -215,12 +206,6 @@ def train_model(model, train_loader, val_loader, test_loader, optimizer, criteri
     best_top1 = 0.0
     best_state_dict = None
     
-    batch_history = {
-        'batch_train': [],
-        'batch_val': [],
-        'batch_test': [],
-    }
-    
     if save_log:
         # 创建保存目录
         log_index = 0
@@ -232,12 +217,16 @@ def train_model(model, train_loader, val_loader, test_loader, optimizer, criteri
             log_index += 1
         save_dir = current_save_dir
         print(f"日志和模型将保存到: {save_dir}")
+        log_file_path = os.path.join(save_dir, "training_log.txt")
+        log_file = open(log_file_path, 'w')
+    else:
+        log_file = None
     
     batch_index = 0
     for epoch in range(num_epochs):
         print(f"Epoch {epoch+1}/{num_epochs}")
-        train_loss, train_top1, train_top5, batch_index = train_one_epoch(model, train_loader, optimizer, criterion, device, save_log, save_dir, epoch+1, batch_index, batch_history)
-        val_loss, val_top1, val_top5, batch_index = validate_one_epoch(model, val_loader, criterion, device, save_log, save_dir, epoch+1, batch_index, batch_history)
+        train_loss, train_top1, train_top5, batch_index = train_one_epoch(model, train_loader, optimizer, criterion, device, save_log, save_dir, epoch+1, batch_index, log_file)
+        val_loss, val_top1, val_top5, batch_index = validate_one_epoch(model, val_loader, criterion, device, save_log, save_dir, epoch+1, batch_index, log_file)
         
         print(f"Train Loss: {train_loss:.4f}, Top 1: {train_top1:.4f}, Top 5: {train_top5:.4f}")
         print(f"Val Loss: {val_loss:.4f}, Top 1: {val_top1:.4f}, Top 5: {val_top5:.4f}")
@@ -260,17 +249,10 @@ def train_model(model, train_loader, val_loader, test_loader, optimizer, criteri
     else:
         print("没有找到最佳模型，使用最后一次训练的模型")
 
-    test_loss, test_top1, test_top5, batch_index = test_one_epoch(model, test_loader, criterion, device, save_log, save_dir, epoch+1, batch_index, batch_history)
+    test_loss, test_top1, test_top5, batch_index = test_one_epoch(model, test_loader, criterion, device, save_log, save_dir, epoch+1, batch_index, log_file)
     print(f"Test Loss: {test_loss:.4f}, Top 1: {test_top1:.4f}, Top 5: {test_top5:.4f}")
     
     if save_log:
-        df_batch = pd.DataFrame(batch_history['batch_train'])
-        df_batch.to_csv(os.path.join(save_dir, "training_log.csv"), index=False)
-        
-        df_batch = pd.DataFrame(batch_history['batch_val'])
-        df_batch.to_csv(os.path.join(save_dir, "validation_log.csv"), index=False)
-        
-        df_batch = pd.DataFrame(batch_history['batch_test'])
-        df_batch.to_csv(os.path.join(save_dir, "test_log.csv"), index=False)
+        log_file.close()
     
-    return batch_history
+    return None
