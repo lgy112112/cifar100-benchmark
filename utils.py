@@ -136,125 +136,163 @@ def train_one_epoch(model, train_loader, optimizer, criterion, device, save_log=
     
     return epoch_loss, epoch_top1, epoch_top5, batch_index # 返回当前epoch的平均损失，top1准确率，top5准确率和batch索引
 
-# TODO: 注释和说明
 def validate_one_epoch(model, val_loader, criterion, device, save_log=False, save_dir=None, epoch=None, batch_index=0, log_file=None):
+    """
+    验证模型在一个epoch上的性能。
+
+    Args:
+        model: 待验证的模型。
+        val_loader: 验证数据加载器。
+        criterion: 损失函数。
+        device: 设备 (CPU 或 CUDA)。
+        save_log: 是否保存日志。
+        save_dir: 日志保存目录。
+        epoch: 当前epoch数。
+        batch_index: 当前batch索引。
+        log_file: 日志文件对象。
+
+    Returns:
+        epoch_loss: 当前epoch的平均损失。
+        epoch_top1: 当前epoch的top1准确率。
+        epoch_top5: 当前epoch的top5准确率。
+        batch_index: 更新后的batch索引。
+    """
     model.eval()  # 设置模型为评估模式
-    running_loss = 0.0
-    top1_correct = 0
-    top5_correct = 0
-    total = 0
+    running_loss = 0.0 # 初始化累计损失
+    top1_correct = 0 # 初始化top1正确数量
+    top5_correct = 0 # 初始化top5正确数量
+    total = 0 # 初始化总样本数
     
-    prog_bar = tqdm(val_loader, desc="Validation", leave=False)
+    prog_bar = tqdm(val_loader, desc="Validation", leave=False) # 创建进度条
     with torch.no_grad():  # 关闭梯度计算
-        for images, labels in prog_bar:
-            images, labels = images.to(device), labels.to(device)
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            running_loss += loss.item()
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            top1_correct += (predicted == labels).sum().item()
-            top5_correct += torch.topk(outputs, 5, dim=1).indices.eq(labels.view(-1, 1)).sum().item()
+        for images, labels in prog_bar: # 遍历验证集
+            images, labels = images.to(device), labels.to(device) # 将数据加载到指定设备
+            outputs = model(images) # 模型输出
+            loss = criterion(outputs, labels) # 计算损失
+            running_loss += loss.item() # 累加损失
+            _, predicted = torch.max(outputs.data, 1) # 获取预测结果
+            total += labels.size(0) # 累加样本总数
+            top1_correct += (predicted == labels).sum().item() # 累加top1正确数量
+            top5_correct += torch.topk(outputs, 5, dim=1).indices.eq(labels.view(-1, 1)).sum().item() # 累加top5正确数量
             
-            batch_loss = running_loss / (prog_bar.n + 1)
-            batch_top1 = top1_correct / total
-            batch_top5 = top5_correct / total
+            batch_loss = running_loss / (prog_bar.n + 1) # 计算当前batch的平均损失
+            batch_top1 = top1_correct / total # 计算当前batch的top1准确率
+            batch_top5 = top5_correct / total # 计算当前batch的top5准确率
             
-            prog_bar.set_postfix({
+            prog_bar.set_postfix({ # 更新进度条显示
                 'loss': batch_loss,
                 'top 1': batch_top1,
                 'top 5': batch_top5
             })
             
-            if save_log:
+            if save_log: # 如果需要保存日志
                 log_data = {
-                    "type": "batch_val",
-                    "epoch": epoch,
-                    "batch": batch_index,
-                    "loss": batch_loss,
-                    "top1": batch_top1,
-                    "top5": batch_top5,
-                    "timestamp": datetime.now().isoformat()
+                    "type": "batch_val", # 日志类型
+                    "epoch": epoch, # 当前epoch数
+                    "batch": batch_index, # 当前batch索引
+                    "loss": batch_loss, # 当前batch的平均损失
+                    "top1": batch_top1, # 当前batch的top1准确率
+                    "top5": batch_top5, # 当前batch的top5准确率
+                    "timestamp": datetime.now().isoformat() # 当前时间戳
                 }
-                log_file.write(json.dumps(log_data) + "\n")
-            batch_index += 1
+                log_file.write(json.dumps(log_data) + "\n") # 将日志写入文件
+            batch_index += 1 # batch索引加1
     
-    epoch_loss = running_loss / len(val_loader)
-    epoch_top1 = top1_correct / total
-    epoch_top5 = top5_correct / total
+    epoch_loss = running_loss / len(val_loader) # 计算当前epoch的平均损失
+    epoch_top1 = top1_correct / total # 计算当前epoch的top1准确率
+    epoch_top5 = top5_correct / total # 计算当前epoch的top5准确率
     
-    if save_log:
+    if save_log: # 如果需要保存日志
         log_data = {
-            "type": "epoch_val",
-            "epoch": epoch,
-            "loss": epoch_loss,
-            "top1": epoch_top1,
-            "top5": epoch_top5,
-            "timestamp": datetime.now().isoformat()
+            "type": "epoch_val", # 日志类型
+            "epoch": epoch, # 当前epoch数
+            "loss": epoch_loss, # 当前epoch的平均损失
+            "top1": epoch_top1, # 当前epoch的top1准确率
+            "top5": epoch_top5, # 当前epoch的top5准确率
+            "timestamp": datetime.now().isoformat() # 当前时间戳
         }
-        log_file.write(json.dumps(log_data) + "\n")
+        log_file.write(json.dumps(log_data) + "\n") # 将日志写入文件
     
     return epoch_loss, epoch_top1, epoch_top5, batch_index
 
 def test_one_epoch(model, test_loader, criterion, device, save_log=False, save_dir=None, epoch=None, batch_index=0, log_file=None):
-    model.eval()  # 设置模型为评估模式
-    running_loss = 0.0
-    top1_correct = 0
-    top5_correct = 0
-    total = 0
+    """
+    测试模型在测试集上的性能。
+
+    Args:
+        model: 要测试的模型。
+        test_loader: 测试数据加载器。
+        criterion: 损失函数。
+        device: 设备 (cpu 或 cuda)。
+        save_log: 是否保存日志。
+        save_dir: 保存日志的目录。
+        epoch: 当前 epoch 数。
+        batch_index: 当前 batch 索引。
+        log_file: 日志文件对象。
+
+    Returns:
+        epoch_loss: 当前 epoch 的平均损失。
+        epoch_top1: 当前 epoch 的 top1 准确率。
+        epoch_top5: 当前 epoch 的 top5 准确率。
+        batch_index: 更新后的 batch 索引。
+    """
+    model.eval()  # 设置模型为评估模式，禁用 dropout 和 batch normalization
+    running_loss = 0.0 # 初始化累积损失
+    top1_correct = 0 # 初始化 top1 正确预测数
+    top5_correct = 0 # 初始化 top5 正确预测数
+    total = 0 # 初始化总样本数
     
-    prog_bar = tqdm(test_loader, desc="Testing")
-    with torch.no_grad():  # 关闭梯度计算
-        for images, labels in prog_bar:
-            images, labels = images.to(device), labels.to(device)
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            running_loss += loss.item()
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            top1_correct += (predicted == labels).sum().item()
-            top5_correct += torch.topk(outputs, 5, dim=1).indices.eq(labels.view(-1, 1)).sum().item()
+    prog_bar = tqdm(test_loader, desc="Testing") # 创建进度条
+    with torch.no_grad():  # 关闭梯度计算，节省内存和计算资源
+        for images, labels in prog_bar: # 遍历测试集
+            images, labels = images.to(device), labels.to(device) # 将数据加载到指定设备
+            outputs = model(images) # 模型输出
+            loss = criterion(outputs, labels) # 计算损失
+            running_loss += loss.item() # 累加损失
+            _, predicted = torch.max(outputs.data, 1) # 获取预测结果
+            total += labels.size(0) # 累加样本总数
+            top1_correct += (predicted == labels).sum().item() # 累加 top1 正确数量
+            top5_correct += torch.topk(outputs, 5, dim=1).indices.eq(labels.view(-1, 1)).sum().item() # 累加 top5 正确数量
             
-            batch_loss = running_loss / (prog_bar.n + 1)
-            batch_top1 = top1_correct / total
-            batch_top5 = top5_correct / total
+            batch_loss = running_loss / (prog_bar.n + 1) # 计算当前 batch 的平均损失
+            batch_top1 = top1_correct / total # 计算当前 batch 的 top1 准确率
+            batch_top5 = top5_correct / total # 计算当前 batch 的 top5 准确率
             
-            prog_bar.set_postfix({
+            prog_bar.set_postfix({ # 更新进度条显示
                 'loss': batch_loss,
                 'top 1': batch_top1,
                 'top 5': batch_top5
             })
             
-            if save_log:
+            if save_log: # 如果需要保存日志
                 log_data = {
-                    "type": "batch_test",
-                    "epoch": epoch,
-                    "batch": batch_index,
-                    "loss": batch_loss,
-                    "top1": batch_top1,
-                    "top5": batch_top5,
-                    "timestamp": datetime.now().isoformat()
+                    "type": "batch_test", # 日志类型
+                    "epoch": epoch, # 当前 epoch 数
+                    "batch": batch_index, # 当前 batch 索引
+                    "loss": batch_loss, # 当前 batch 的平均损失
+                    "top1": batch_top1, # 当前 batch 的 top1 准确率
+                    "top5": batch_top5, # 当前 batch 的 top5 准确率
+                    "timestamp": datetime.now().isoformat() # 当前时间戳
                 }
-                log_file.write(json.dumps(log_data) + "\n")
-            batch_index += 1
+                log_file.write(json.dumps(log_data) + "\n") # 将日志写入文件
+            batch_index += 1 # batch 索引加 1
     
-    epoch_loss = running_loss / len(test_loader)
-    epoch_top1 = top1_correct / total
-    epoch_top5 = top5_correct / total
+    epoch_loss = running_loss / len(test_loader) # 计算当前 epoch 的平均损失
+    epoch_top1 = top1_correct / total # 计算当前 epoch 的 top1 准确率
+    epoch_top5 = top5_correct / total # 计算当前 epoch 的 top5 准确率
     
-    if save_log:
+    if save_log: # 如果需要保存日志
         log_data = {
-            "type": "epoch_test",
-            "epoch": epoch,
-            "loss": epoch_loss,
-            "top1": epoch_top1,
-            "top5": epoch_top5,
-            "timestamp": datetime.now().isoformat()
+            "type": "epoch_test", # 日志类型
+            "epoch": epoch, # 当前 epoch 数
+            "loss": epoch_loss, # 当前 epoch 的平均损失
+            "top1": epoch_top1, # 当前 epoch 的 top1 准确率
+            "top5": epoch_top5, # 当前 epoch 的 top5 准确率
+            "timestamp": datetime.now().isoformat() # 当前时间戳
         }
-        log_file.write(json.dumps(log_data) + "\n")
+        log_file.write(json.dumps(log_data) + "\n") # 将日志写入文件
     
     return epoch_loss, epoch_top1, epoch_top5, batch_index
-
 
 def train_model(model, train_loader, val_loader, test_loader, optimizer, criterion, device, num_epochs, save_log=False, save_dir='log', pretrained=None):
     """
@@ -335,40 +373,74 @@ def train_model(model, train_loader, val_loader, test_loader, optimizer, criteri
     
     return None
 
-
 def predict(model, test_loader, device, pretrained=None):
+    """
+    使用给定的模型和测试数据加载器进行预测。
+
+    Args:
+        model (torch.nn.Module): 要进行预测的模型。
+        test_loader (torch.utils.data.DataLoader): 测试数据加载器。
+        device (torch.device): 用于计算的设备 (例如 'cuda' 或 'cpu')。
+        pretrained (str, optional): 预训练模型的路径。如果提供，则加载预训练模型的权重。默认为 None。
+
+    Returns:
+        tuple: 包含 top1 准确率和 top5 准确率的元组。
+    """
+    # 如果提供了预训练模型路径，则加载预训练模型的权重
     if pretrained is not None:
         model.load_state_dict(torch.load(pretrained))
+    # 将模型设置为评估模式
     model.eval()
+    # 将模型移动到指定的设备
     model.to(device)
+    # 在不计算梯度的上下文中进行预测
     with torch.no_grad():
+        # 初始化 top1 和 top5 正确预测的数量以及总样本数
         top1_correct = 0
         top5_correct = 0
         total = 0
+        # 遍历测试数据加载器
         for images, labels in test_loader:
+            # 将图像和标签移动到指定的设备
             images, labels = images.to(device), labels.to(device)
+            # 通过模型进行前向传播，获取输出
             outputs = model(images)
+            # 获取预测的类别索引
             _, predicted = torch.max(outputs.data, 1)
+            # 更新总样本数
             total += labels.size(0)
+            # 更新 top1 正确预测的数量
             top1_correct += (predicted == labels).sum().item()
+            # 更新 top5 正确预测的数量
             top5_correct += torch.topk(outputs, 5, dim=1).indices.eq(labels.view(-1, 1)).sum().item()
+        # 计算 top1 准确率
         top1_accuracy = top1_correct / total
+        # 计算 top5 准确率
         top5_accuracy = top5_correct / total
+        # 打印 top1 和 top5 准确率
         print(f"Top 1 Accuracy: {top1_accuracy:.4f}, Top 5 Accuracy: {top5_accuracy:.4f}")
+    # 返回 top1 和 top5 准确率
     return top1_accuracy, top5_accuracy
 
+def logshow(log_file_path, save_path=None):
+    """
+    读取日志文件并可视化训练、验证和测试的性能指标。
 
-def logshow(log_file_path):
+    Args:
+        log_file_path (str): 日志文件的路径。
+    """
     # 读取日志文件
     with open(log_file_path, 'r') as f:
         logs = [json.loads(line) for line in f]
 
-    # 将日志转换为 DataFrame
+    # 将日志转换为 DataFrame，方便数据处理
     df = pd.DataFrame(logs)
 
-    # 提取 epoch_train 和 epoch_val 数据
+    # 提取 epoch_train 数据，包含每个训练epoch的损失和准确率
     train_data = df[df['type'] == 'epoch_train']
+    # 提取 epoch_val 数据，包含每个验证epoch的损失和准确率
     val_data = df[df['type'] == 'epoch_val']
+    # 提取 epoch_test 数据，包含测试集的损失和准确率
     test_data = df[df['type'] == 'epoch_test']
 
     # 可视化 epoch_train 和 epoch_val 的曲线图
@@ -377,41 +449,47 @@ def logshow(log_file_path):
 
         # Loss 曲线
         plt.subplot(1, 3, 1)
-        plt.plot(train_data['epoch'], train_data['loss'], label='Train Loss')
-        plt.plot(val_data['epoch'], val_data['loss'], label='Val Loss')
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
-        plt.title('Loss Curve')
-        plt.legend()
+        plt.plot(train_data['epoch'], train_data['loss'], label='Train Loss') # 绘制训练损失曲线
+        plt.plot(val_data['epoch'], val_data['loss'], label='Val Loss') # 绘制验证损失曲线
+        plt.xlabel('Epoch') # 设置x轴标签
+        plt.ylabel('Loss') # 设置y轴标签
+        plt.title('Loss Curve') # 设置标题
+        plt.legend() # 显示图例
 
         # Top1 曲线
         plt.subplot(1, 3, 2)
-        plt.plot(train_data['epoch'], train_data['top1'], label='Train Top1')
-        plt.plot(val_data['epoch'], val_data['top1'], label='Val Top1')
-        plt.xlabel('Epoch')
-        plt.ylabel('Top1 Accuracy')
-        plt.title('Top1 Accuracy Curve')
-        plt.legend()
+        plt.plot(train_data['epoch'], train_data['top1'], label='Train Top1') # 绘制训练集top1准确率曲线
+        plt.plot(val_data['epoch'], val_data['top1'], label='Val Top1') # 绘制验证集top1准确率曲线
+        plt.xlabel('Epoch') # 设置x轴标签
+        plt.ylabel('Top1 Accuracy') # 设置y轴标签
+        plt.title('Top1 Accuracy Curve') # 设置标题
+        plt.legend() # 显示图例
 
         # Top5 曲线
         plt.subplot(1, 3, 3)
-        plt.plot(train_data['epoch'], train_data['top5'], label='Train Top5')
-        plt.plot(val_data['epoch'], val_data['top5'], label='Val Top5')
-        plt.xlabel('Epoch')
-        plt.ylabel('Top5 Accuracy')
-        plt.title('Top5 Accuracy Curve')
-        plt.legend()
+        plt.plot(train_data['epoch'], train_data['top5'], label='Train Top5') # 绘制训练集top5准确率曲线
+        plt.plot(val_data['epoch'], val_data['top5'], label='Val Top5') # 绘制验证集top5准确率曲线
+        plt.xlabel('Epoch') # 设置x轴标签
+        plt.ylabel('Top5 Accuracy') # 设置y轴标签
+        plt.title('Top5 Accuracy Curve') # 设置标题
+        plt.legend() # 显示图例
 
-        plt.tight_layout()
-        plt.show()
+        plt.tight_layout() # 调整子图布局
+        plt.show() # 显示图像
+        if save_path is not None:
+            train_val_log_pic = os.path.join(save_path, "train_val_log.png")
+            plt.savefig(train_val_log_pic)
 
     # 可视化 epoch_test 的柱状图
     if not test_data.empty:
         plt.figure(figsize=(8, 5))
-        metrics = ['loss', 'top1', 'top5']
-        values = [test_data.iloc[0][metric] for metric in metrics]
-        plt.bar(metrics, values, color=['blue', 'green', 'orange'])
-        plt.xlabel('Metrics')
-        plt.ylabel('Value')
-        plt.title('Test Metrics')
-        plt.show()
+        metrics = ['loss', 'top1', 'top5'] # 定义柱状图的指标
+        values = [test_data.iloc[0][metric] for metric in metrics] # 获取测试集的损失和准确率
+        plt.bar(metrics, values, color=['blue', 'green', 'orange']) # 绘制柱状图
+        plt.xlabel('Metrics') # 设置x轴标签
+        plt.ylabel('Value') # 设置y轴标签
+        plt.title('Test Metrics') # 设置标题
+        plt.show() # 显示图像
+        if save_path is not None:
+            test_log_pic = os.path.join(save_path, "test_log.png")
+            plt.savefig(test_log_pic)

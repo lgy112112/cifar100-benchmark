@@ -1,5 +1,7 @@
 # cifar100-benchmark
 
+<img src="images/cifar100-benchmark.png" alt="cifar100-benchmark" style="width: 100%;">
+
 这是一个用于CIFAR-100数据集基准测试的框架。该项目提供了完整的训练、验证和测试流程，您可以轻松导入自己的模型进行测试。
 
 ## 特点
@@ -13,15 +15,25 @@
 
 ### 主要文件说明
 
-- `utils.py`: 工具函数集合
-  - 提供了基础的训练和评估函数
-  - 所有函数都可以根据需求自定义修改
-  - 包含模型检查、训练、验证、测试等核心功能
+- `utils.py` 工具函数集合
+
+  - `imshow(img)` 可视化图像。
+  - `check_model(model)` 检查模型的前向传播、损失计算和参数量。
+  - `logshow(log_file_path)` 可视化训练、验证和测试日志。
+  - `train_one_epoch()` 训练一个 epoch，计算损失和准确率。
+  - `validate_one_epoch()` 验证一个 epoch，计算损失和准确率。
+  - `test_one_epoch()` 测试一个 epoch，计算损失和准确率。
+  - `train_model()` 执行完整的训练流程，包括训练、验证和测试，并保存最佳模型和日志。
+  - `predict()` 使用模型进行预测并显示准确率。
+
 
 - `networks.py`: 示例模型实现
   - 提供了一个简单的CNN模型作为示例
   - 您可以替换成自己的模型实现
-  - 建议参考该文件的接口设计
+  - 建议参考该文件的接口设计：
+    - **输入**: 形状为 `[batch_size, 3, 32, 32]` 的张量，适用于 3 通道的 32x32 图像
+    - **输出**: 形状为 `[batch_size, num_classes]` 的张量，适用于分类任务，默认 `num_classes=100`
+
 
 - `data_get.ipynb`: 数据加载和预处理示例
   - 展示了基本的数据处理流程
@@ -58,3 +70,7 @@
    - 使用`train.ipynb`作为参考
    - 根据需要调整超参数
    - 记录和比较模型性能 
+
+<img src="images/train_val_log.png" alt="train_val_log" style="width: 100%;">
+
+<img src="images/test_log.png" alt="test_log" style="width: 100%;">
