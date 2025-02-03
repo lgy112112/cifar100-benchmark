@@ -475,10 +475,10 @@ def logshow(log_file_path, save_path=None):
         plt.legend() # 显示图例
 
         plt.tight_layout() # 调整子图布局
-        plt.show() # 显示图像
         if save_path is not None:
             train_val_log_pic = os.path.join(save_path, "train_val_log.png")
             plt.savefig(train_val_log_pic)
+        plt.show() # 显示图像
 
     # 可视化 epoch_test 的柱状图
     if not test_data.empty:
@@ -489,7 +489,7 @@ def logshow(log_file_path, save_path=None):
         plt.xlabel('Metrics') # 设置x轴标签
         plt.ylabel('Value') # 设置y轴标签
         plt.title('Test Metrics') # 设置标题
-        plt.show() # 显示图像
         if save_path is not None:
             test_log_pic = os.path.join(save_path, "test_log.png")
             plt.savefig(test_log_pic)
+        plt.show() # 显示图像
