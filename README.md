@@ -74,3 +74,5 @@
 <img src="images/train_val_log.png" alt="train_val_log">
 
 <img src="images/test_log.png" alt="test_log">
+
+<img src="images/model_comparison.png" alt="model_comparison">

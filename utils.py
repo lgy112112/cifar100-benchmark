@@ -7,6 +7,7 @@ import pandas as pd
 from tqdm import tqdm
 from datetime import datetime
 import json
+from matplotlib.lines import Line2D
 
 def imshow(img):
     '''
@@ -318,9 +319,10 @@ def train_model(model, train_loader, val_loader, test_loader, optimizer, criteri
             model.load_state_dict(torch.load(pretrained))
             print(f"加载预训练模型: {pretrained}")
         else:
-            print(f"预训练模型不存在: {pretrained}")
+            print(f"预训练模型不存在: {pretrained}，即将跳过预训练模型，请检查预训练模型路径是否正确")
     else:
-        print("没有预训练模型")
+        print("不使用预训练模型")
+    print("\n")
     
     if save_log:
         # 创建保存目录
@@ -332,7 +334,7 @@ def train_model(model, train_loader, val_loader, test_loader, optimizer, criteri
                 break
             log_index += 1
         save_dir = current_save_dir
-        print(f"日志和模型将保存到: {save_dir}")
+        print(f"日志和模型将保存到: {save_dir}\n")
         log_file_path = os.path.join(save_dir, "training_log.json")
         log_file = open(log_file_path, 'w')
     else:
@@ -340,6 +342,7 @@ def train_model(model, train_loader, val_loader, test_loader, optimizer, criteri
     
     batch_index = 0
     for epoch in range(num_epochs):
+        print("------------------------------------------------")
         print(f"Epoch {epoch+1}/{num_epochs}")
         train_loss, train_top1, train_top5, batch_index = train_one_epoch(model, train_loader, optimizer, criterion, device, save_log, save_dir, epoch+1, batch_index, log_file)
         val_loss, val_top1, val_top5, batch_index = validate_one_epoch(model, val_loader, criterion, device, save_log, save_dir, epoch+1, batch_index, log_file)
@@ -430,6 +433,7 @@ def logshow(log_file_path, save_path=None):
         log_file_path (str): 日志文件的路径。
     """
     # 读取日志文件
+    
     with open(log_file_path, 'r') as f:
         logs = [json.loads(line) for line in f]
 
@@ -493,3 +497,87 @@ def logshow(log_file_path, save_path=None):
             test_log_pic = os.path.join(save_path, "test_log.png")
             plt.savefig(test_log_pic)
         plt.show() # 显示图像
+        
+def logshow_multi(log_file_paths, save_path=None):
+    """
+    读取多个日志文件并可视化训练、验证和测试的性能指标对比
+    
+    Args:
+        log_file_paths (list): 日志文件的路径列表
+        save_path (str): 图片保存路径
+    """
+    plt.figure(figsize=(15, 5))
+    colors = plt.cm.tab10.colors  # 使用预定义颜色方案
+    
+    # 准备数据
+    all_data = []
+    for i, path in enumerate(log_file_paths):
+        with open(path, 'r') as f:
+            logs = [json.loads(line) for line in f]
+            df = pd.DataFrame(logs)
+            all_data.append({
+                'train': df[df['type'] == 'epoch_train'],
+                'val': df[df['type'] == 'epoch_val'],
+                'path': path,  # 直接使用日志路径
+                'color': colors[i % len(colors)]  # 为每个日志分配唯一颜色
+            })
+
+    # 绘制Loss曲线
+    plt.subplot(1, 3, 1)
+    for data in all_data:
+        plt.plot(data['train']['epoch'], data['train']['loss'], 
+                color=data['color'], linestyle='-',  # 训练集用实线
+                label=f"{data['path']} (Train)")
+        plt.plot(data['val']['epoch'], data['val']['loss'],
+                color=data['color'], linestyle='--',  # 验证集用虚线
+                label=f"{data['path']} (Val)")
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Loss Curve Comparison')
+    
+    # 绘制Top1曲线
+    plt.subplot(1, 3, 2)
+    for data in all_data:
+        plt.plot(data['train']['epoch'], data['train']['top1'],
+                color=data['color'], linestyle='-')
+        plt.plot(data['val']['epoch'], data['val']['top1'],
+                color=data['color'], linestyle='--')
+    plt.xlabel('Epoch')
+    plt.ylabel('Top1 Accuracy')
+    plt.title('Top1 Accuracy Comparison')
+
+    # 绘制Top5曲线
+    plt.subplot(1, 3, 3)
+    for data in all_data:
+        plt.plot(data['train']['epoch'], data['train']['top5'],
+                color=data['color'], linestyle='-')
+        plt.plot(data['val']['epoch'], data['val']['top5'],
+                color=data['color'], linestyle='--')
+    plt.xlabel('Epoch')
+    plt.ylabel('Top5 Accuracy')
+    plt.title('Top5 Accuracy Comparison')
+
+    # 统一图例
+    handles = []
+    for data in all_data:
+        handles.append(Line2D([0], [0], 
+                            color=data['color'], 
+                            linestyle='-',
+                            label=f"{data['path']} (Train)"))
+        handles.append(Line2D([0], [0], 
+                            color=data['color'], 
+                            linestyle='--',
+                            label=f"{data['path']} (Val)"))
+    
+    plt.tight_layout()
+    plt.legend(handles=handles, 
+             bbox_to_anchor=(1.05, 0.5), 
+             loc='center left', 
+             borderaxespad=0.)
+    
+    if save_path is not None:
+        compare_pic = os.path.join(save_path, "model_comparison.png")
+        plt.savefig(compare_pic, bbox_inches='tight')
+    plt.show()
+        
+    
