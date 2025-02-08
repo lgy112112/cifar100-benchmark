@@ -4,3 +4,5 @@
 actions/
 output.txt
 logs/
+XUNet/
+vit-pytorch/

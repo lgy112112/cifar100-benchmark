@@ -8,6 +8,7 @@ from tqdm import tqdm
 from datetime import datetime
 import json
 from matplotlib.lines import Line2D
+from torchsummary import summary
 
 def imshow(img):
     '''
@@ -43,7 +44,10 @@ def check_model(model, num_classes=100, batch_size=4, device='cpu'):
     print(f"test_target shape: {test_target.shape}")
     loss = criterion(output, test_target)
     print(f"Test loss: {loss.item():.4f}")
-    print("损失计算成功")
+    print("损失计算成功\n")
+    
+    print("模型结构 from torchsummary:")
+    summary(model, (3, 32, 32))
     
     # # 3. 统计模型参数
     # total_params = sum(p.numel() for p in model.parameters())
